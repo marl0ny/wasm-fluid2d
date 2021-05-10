@@ -1,15 +1,15 @@
 #include <iostream>
+#include <utility>
 #ifdef __EMSCRIPTEN__
 #include <functional>
 #include <emscripten.h>
 #endif
 #include "gl_wrappers2d/gl_wrappers.h"
 
-
-struct mouse {
+struct {
     double x, y;
-    int pressed = 0;
-    int released = 0;
+    bool pressed = false;
+    bool released = false;
     int w, h;
     void update(GLFWwindow *window) {
         glfwGetFramebufferSize(window, &w, &h);
@@ -17,21 +17,42 @@ struct mouse {
         x = x/(double)w;
         y = 1.0 - y/(double)h;
         if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS) {
-            pressed = 1;
+            pressed = true;
         } else {
-            if (pressed) {
-                released = 1;
-            }
-            pressed = 0;
+            if (released) released = false;
+            if (pressed) released = true;
+            pressed = false;
         }
     }
-}left_click;
+} left_click;
 
-template <typename T>
-void swap(T &a, T &b) {
-    T t = a;
-    a = b;
-    b = t;
+
+struct {
+    double x, y;
+    bool pressed = false;
+    bool released = false;
+    int w, h;
+    void update(GLFWwindow *window) {
+        glfwGetFramebufferSize(window, &w, &h);
+        glfwGetCursorPos(window, &x, &y);
+        x = x/(double)w;
+        y = 1.0 - y/(double)h;
+        if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_2) == GLFW_PRESS) {
+            pressed = true;
+        } else {
+            if (released) released = false;
+            if (pressed) released = true;
+            pressed = false;
+        }
+    }
+} right_click;
+
+
+void button_update(GLFWwindow *window, int button_key, 
+                    int &param, int new_val) {
+    if (glfwGetKey(window, button_key) == GLFW_PRESS) {
+        param = new_val;
+    }
 }
 
 
@@ -45,9 +66,14 @@ void browser_loop() {
 
 int main() {
 
-    int width = 512, height = 512;
-    GLFWwindow *window = init_window(width, height);
+
+    int width = 512, height = 128;
+    // width *= 2;
+    // height *= 2;
+    float view_ratio = 2.5;
+    GLFWwindow *window = init_window(view_ratio*width, view_ratio*height);
     init_glew();
+    glViewport(0, 0, width, height);
 
     #ifdef  __EMSCRIPTEN__
     #include "shaders.h"
@@ -113,17 +139,17 @@ int main() {
     auto programs = {
         copy_program,
         density_program,
-        step_down_program, 
-        step_horizontals_program, 
-        step_uppers_program, 
-        stream_down_program, 
-        stream_h_program, 
-        stream_ups_program, 
-        init_cond_program, 
-        draw_program, 
-        view_program, 
+        step_down_program,
+        step_horizontals_program,
+        step_uppers_program,
+        stream_down_program,
+        stream_h_program,
+        stream_ups_program,
+        init_cond_program,
+        draw_program,
+        view_program,
     };
-    Quad view_frame = Quad::make_frame(width, height);
+    Quad view_frame = Quad::make_frame(view_ratio*width, view_ratio*height);
     Quad draw_frame = Quad::make_float_frame(width, height);
     Quad barrier = Quad::make_float_frame(width, height);
     // d -> Store the lower left, downwards, and lower right quantities.
@@ -137,52 +163,68 @@ int main() {
     Quad u2 = Quad::make_float_frame(width, height);
     Quad *quads[6] = {&d1, &c1, &u1, &d2, &c2, &u2};
 
-    /*for (auto &q: quads) {
-        q->bind(init_cond_program);
-        q->set_float_uniforms({
-            {"left", 0.0}, {"centre", 0.0}, {"right", 2.0}
-        });
-    }*/
+    int view_mode = 0;
+    enum MouseMode{DRAW_BARRIER, DRAW_FLOW};
+    int mouse_mode = DRAW_BARRIER;
 
     auto set_init_cond = [&] {
         quads[1]->bind(init_cond_program);
         quads[1]->set_float_uniforms(
-            {{"left", 0.0}, {"centre", 1.5}, {"right", 0.4}}
+            // 1.6 : 0.64
+            {{"left", 0.0}, {"centre", 1.6}, {"right", 0.5}}
             );
         quads[1]->draw();
         unbind();
         quads[4]->bind(init_cond_program);
         quads[4]->set_float_uniforms(
-            {{"left", 0.0}, {"centre", 1.5}, {"right", 0.4}}
+            {{"left", 0.0}, {"centre", 1.6}, {"right", 0.5}}
             );
         quads[4]->draw();
         unbind();
     };
 
-    auto draw = [&] {
-        double w_stencil = 0.015;
-        double h_stencil = 0.015;
-        for (int i = 0; i < 6; i++) {
-            draw_frame.bind(draw_program);
-            draw_frame.set_int_uniform("tex", quads[i]->get_value());
-            draw_frame.set_float_uniforms({
+    auto draw_barrier = [&] {
+        auto scale_click_type = [&](double click_type) {
+            return click_type;};
+        double w_stencil = 0.03;
+        double h_stencil = 0.03;
+        // if (right_click.pressed) {
+        //     w_stencil *= 10.0;
+        //     h_stencil *= 10.0;
+        // }
+        left_click.x = scale_click_type(left_click.x);
+        left_click.y = scale_click_type(left_click.y);
+        right_click.x = scale_click_type(right_click.x);
+        right_click.y = scale_click_type(right_click.y);
+        if (left_click.pressed) {
+            for (int i = 0; i < 6; i++) {
+                draw_frame.bind(draw_program);
+                draw_frame.set_int_uniform("tex", quads[i]->get_value());
+                draw_frame.set_float_uniforms({
+                    {"xc", left_click.x}, {"yc", left_click.y},
                 {"xc", left_click.x}, {"yc", left_click.y}, 
-                {"w", w_stencil}, {"h", h_stencil*((float)width/height)},
-                {"r", 0.0}, {"g", 0.0}, {"b", 0.0}
-            });
-            draw_frame.draw();
-            unbind();
-            quads[i]->bind(copy_program);
-            quads[i]->set_int_uniform("tex", draw_frame.get_value());
-            quads[i]->draw();
-            unbind();
+                    {"xc", left_click.x}, {"yc", left_click.y},
+                {"xc", left_click.x}, {"yc", left_click.y}, 
+                    {"xc", left_click.x}, {"yc", left_click.y},
+                    {"h", h_stencil}, {"w", w_stencil*((float)height/width)},
+                    {"r", 0.0}, {"g", 0.0}, {"b", 0.0}
+                });
+                draw_frame.draw();
+                unbind();
+                quads[i]->bind(copy_program);
+                quads[i]->set_int_uniform("tex", draw_frame.get_value());
+                quads[i]->draw();
+                unbind();
+            }
         }
         draw_frame.bind(draw_program);
         draw_frame.set_int_uniform("tex", barrier.get_value());
         draw_frame.set_float_uniforms({
-            {"xc", left_click.x}, {"yc", left_click.y}, 
-            {"w", w_stencil}, {"h", h_stencil*((float)width/height)},
-            {"r", 1.0}, {"g", 0.0}, {"b", 0.0}
+            {"xc", (right_click.pressed)? right_click.x: left_click.x}, 
+            {"yc", (right_click.pressed)? right_click.y: left_click.y},
+            {"h", h_stencil}, {"w", w_stencil*((float)height/width)},
+            {"r", (right_click.pressed)? 0.0: 1.0}, 
+            {"g", 0.0}, {"b", 0.0}
         });
         draw_frame.draw();
         unbind();
@@ -192,20 +234,29 @@ int main() {
         unbind();
     };
 
+
+    auto draw = [&] {
+        if (mouse_mode == DRAW_BARRIER) {
+            draw_barrier();
+        } else if (mouse_mode == DRAW_FLOW) {
+
+        }
+    };
+
     int down1=0, horiz1=1, ups1=2;
     int down2=3, horiz2=4, ups2=5;
-    double omega = 0.5;
+    double omega = 1.0;
 
     auto density_mean_vel = [&]{
         draw_frame.bind(density_program);
         draw_frame.set_int_uniforms({
-            {"upTex", quads[ups1]->get_value()}, 
+            {"upTex", quads[ups1]->get_value()},
             {"leftCenterRightTex", quads[horiz1]->get_value()},
             {"downTex", quads[down1]->get_value()}});
         draw_frame.draw();
         unbind();
     };
-    
+
     auto steps = [&]{
 
         quads[down2]->bind(step_down_program);
@@ -241,9 +292,9 @@ int main() {
         quads[ups2]->draw();
         unbind();
 
-        swap(down1, down2);
-        swap(horiz1, horiz2);
-        swap(ups1, ups2);
+        std::swap(down1, down2);
+        std::swap(horiz1, horiz2);
+        std::swap(ups1, ups2);
     };
 
     auto streams = [&] {
@@ -285,9 +336,9 @@ int main() {
         quads[ups2]->draw();
         unbind();
 
-        swap(down1, down2);
-        swap(horiz1, horiz2);
-        swap(ups1, ups2);
+        std::swap(down1, down2);
+        std::swap(horiz1, horiz2);
+        std::swap(ups1, ups2);
     };
 
     auto add_vel = [&] {
@@ -298,7 +349,7 @@ int main() {
         });
         quads[horiz2]->draw();
         unbind();
-        swap(horiz1, horiz2);
+        std::swap(horiz1, horiz2);
 
     };
 
@@ -306,26 +357,41 @@ int main() {
     auto
     #endif
     loop = [&] {
-        if (left_click.pressed) {
+        if (left_click.pressed || right_click.pressed) {
             draw();
         }
-        if (left_click.released) {
-            left_click.released = 0;
+        for (int _ = 0; _ < 7; _++) {
+            for (int p = 0; p < 1; p++) {
+                density_mean_vel();
+                steps();
+            }
+            streams();
         }
-        for (int p = 0; p < 5; p++) {
-            density_mean_vel();
-            steps();
-        }
-        streams();
-        // add_vel();
+        // glViewport needs to be called whenever switching
+        // to framebuffers of different sizes:
+        // https://stackoverflow.com/a/33719126
+        // answer by datenwolf (https://stackoverflow.com/users/524368)
+        // question (https://stackoverflow.com/q/33718237)
+        // by Goldboa (https://stackoverflow.com/users/4567996) with
+        // edits by Reto Koradi (https://stackoverflow.com/users/3530129).
+        glViewport(0, 0, view_ratio*width, view_ratio*height); 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         view_frame.bind(view_program);
-        view_frame.set_int_uniform("tex", quads[horiz1]->get_value());
-        view_frame.set_int_uniform("viewMode", 0);
+        view_frame.set_int_uniform("barrierTex", barrier.get_value());
+        view_frame.set_int_uniform("upsTex", quads[ups1]->get_value());
+        view_frame.set_int_uniform("horizontalsTex", 
+                                   quads[horiz1]->get_value());
+        view_frame.set_int_uniform("downTex", quads[down1]->get_value());
+        view_frame.set_int_uniform("viewMode", view_mode);
         view_frame.draw();
         unbind();
+        glViewport(0, 0, width, height);
         glfwPollEvents();
         left_click.update(window);
+        right_click.update(window);
+        button_update(window, GLFW_KEY_0, view_mode, 0);
+        button_update(window, GLFW_KEY_1, view_mode, 1);
+        button_update(window, GLFW_KEY_2, view_mode, 2);
         glfwSwapBuffers(window);
     };
 

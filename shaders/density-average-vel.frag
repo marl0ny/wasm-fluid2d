@@ -30,6 +30,10 @@ void main() {
         vx = vx/total;
         vy = vy/total;
     }
+    // if (vx*vx + vy*vy > 100000.0) {
+    //     vx = vx/(vx*vx + vy*vy);
+    //     vy = vy/(vx*vx + vy*vy);
+    // }
     gl_FragColor = vec4(total, vx, vy, 1.0);
 
 }

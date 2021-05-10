@@ -1,4 +1,5 @@
 #include "gl_wrappers.h"
+#include <GLFW/glfw3.h>
 
 GLFWwindow *init_window(int width, int height) {
     if (glfwInit() != GL_TRUE) {
@@ -7,11 +8,12 @@ GLFWwindow *init_window(int width, int height) {
     }
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    #ifndef __EMSCRIPTEN__
+    // #ifndef __EMSCRIPTEN__
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
-    #endif
+    // glfwWindowHint(GLFW_MAXIMIZED, GL_TRUE);
+    // #endif
     GLFWwindow *window = glfwCreateWindow(width, height, "GUI", NULL, NULL);
     glfwMakeContextCurrent(window);
     return window;
@@ -97,16 +99,30 @@ GLuint get_tex() {
     return texture;
 }
 
-void do_texture_paramertiri_and_mipmap() {
+void do_texture_paramertiri_and_mipmap(int type) {
     glGenerateMipmap(GL_TEXTURE_2D);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     #ifdef __EMSCRIPTEN__
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    if (type == GL_RGBA32F) {
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    } else {
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    }
     #else
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+    // if (type == GL_RGBA32F) {
+    //     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+    //     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+    // } else {
+    //     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    //     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    // }
     #endif
 } 
 
@@ -121,7 +137,7 @@ GLuint make_texture(uint8_t *image, size_t image_w, size_t image_h) {
                 image_w, image_h, 0, GL_RGB,
                 GL_UNSIGNED_BYTE, image);
     #endif
-    do_texture_paramertiri_and_mipmap();
+    do_texture_paramertiri_and_mipmap(GL_RGB8);
     return texture;
 }
 
@@ -136,7 +152,7 @@ GLuint make_float_texture(float *image, size_t image_w, size_t image_h) {
                  image_w, image_h, 0, GL_RGBA,
                  GL_FLOAT, image);
     #endif
-    do_texture_paramertiri_and_mipmap();
+    do_texture_paramertiri_and_mipmap(GL_RGBA32F);
     return texture;
 }
 
