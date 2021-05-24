@@ -11,8 +11,11 @@ uniform float dx;
 uniform sampler2D tex;
 
 void main() {
-    if (st.x < dx)
-    gl_FragColor = vec4(left, centre, right, 1.0);
-    else
+    if (st.x < dx) {
+    vec4 color = texture2D(tex, st);
+    color[3] = min(color[3], color[3] + right);
+    gl_FragColor = color;
+    } else {
     gl_FragColor = texture2D(tex, st);
+    }
 }

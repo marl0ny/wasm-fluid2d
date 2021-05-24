@@ -3,20 +3,26 @@
 #ifdef __EMSCRIPTEN__
 #include <functional>
 #include <emscripten.h>
+// #else
+// #include <ctime>
 #endif
 #include "gl_wrappers2d/gl_wrappers.h"
 
-struct {
+struct MouseClick {
     double x, y;
     bool pressed = false;
     bool released = false;
     int w, h;
+    int mouse_button;
+    MouseClick(int mb) {
+        mouse_button = mb;
+    }
     void update(GLFWwindow *window) {
         glfwGetFramebufferSize(window, &w, &h);
         glfwGetCursorPos(window, &x, &y);
         x = x/(double)w;
         y = 1.0 - y/(double)h;
-        if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS) {
+        if (glfwGetMouseButton(window, mouse_button) == GLFW_PRESS) {
             pressed = true;
         } else {
             if (released) released = false;
@@ -24,28 +30,7 @@ struct {
             pressed = false;
         }
     }
-} left_click;
-
-
-struct {
-    double x, y;
-    bool pressed = false;
-    bool released = false;
-    int w, h;
-    void update(GLFWwindow *window) {
-        glfwGetFramebufferSize(window, &w, &h);
-        glfwGetCursorPos(window, &x, &y);
-        x = x/(double)w;
-        y = 1.0 - y/(double)h;
-        if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_2) == GLFW_PRESS) {
-            pressed = true;
-        } else {
-            if (released) released = false;
-            if (pressed) released = true;
-            pressed = false;
-        }
-    }
-} right_click;
+};
 
 
 void button_update(GLFWwindow *window, int button_key, 
@@ -74,6 +59,8 @@ int main() {
     GLFWwindow *window = init_window(view_ratio*width, view_ratio*height);
     init_glew();
     glViewport(0, 0, width, height);
+    MouseClick left_click = MouseClick(GLFW_MOUSE_BUTTON_1);
+    MouseClick right_click = MouseClick(GLFW_MOUSE_BUTTON_2);
 
     #ifdef  __EMSCRIPTEN__
     #include "shaders.h"
@@ -95,6 +82,7 @@ int main() {
     GLuint draw_shader = get_shader("./shaders/draw.frag", GL_FRAGMENT_SHADER);
     GLuint view_shader = get_shader("./shaders/view.frag", GL_FRAGMENT_SHADER);
     GLuint add_vel_shader = get_shader("./shaders/add-vel.frag", GL_FRAGMENT_SHADER);
+    GLuint init_barrier_shader = get_shader("./shaders/init-barrier.frag", GL_FRAGMENT_SHADER);
     #endif
 
     GLuint density_program = make_program(
@@ -112,6 +100,7 @@ int main() {
     GLuint draw_program = make_program(vertices_shader, draw_shader);
     GLuint view_program = make_program(vertices_shader, view_shader);
     GLuint add_vel_program = make_program(vertices_shader, add_vel_shader);
+    GLuint init_barrier_program = make_program(vertices_shader, init_barrier_shader);
 
     /* List all programs (separated by comma and newline):
     mapfile -t f < <(egrep fluid2d.cpp -oh -e "[a-zA-Z_]+_program[ ]")
@@ -151,6 +140,7 @@ int main() {
     };
     Quad view_frame = Quad::make_frame(view_ratio*width, view_ratio*height);
     Quad draw_frame = Quad::make_float_frame(width, height);
+    Quad density_vel_frame = Quad::make_float_frame(width, height);
     Quad barrier = Quad::make_float_frame(width, height);
     // d -> Store the lower left, downwards, and lower right quantities.
     // c -> Store the left, centre, and right quantities.
@@ -168,16 +158,20 @@ int main() {
     int mouse_mode = DRAW_BARRIER;
 
     auto set_init_cond = [&] {
+        barrier.bind(init_barrier_program);
+        barrier.set_float_uniform("dy", 1.0/(float)height);
+        barrier.draw();
+        unbind();
         quads[1]->bind(init_cond_program);
         quads[1]->set_float_uniforms(
             // 1.6 : 0.64
-            {{"left", 0.0}, {"centre", 1.6}, {"right", 0.5}}
+            {{"left", 0.0}, {"centre", 1.6}, {"right", 0.64}}
             );
         quads[1]->draw();
         unbind();
         quads[4]->bind(init_cond_program);
         quads[4]->set_float_uniforms(
-            {{"left", 0.0}, {"centre", 1.6}, {"right", 0.5}}
+            {{"left", 0.0}, {"centre", 1.6}, {"right", 0.64}}
             );
         quads[4]->draw();
         unbind();
@@ -248,12 +242,12 @@ int main() {
     double omega = 1.0;
 
     auto density_mean_vel = [&]{
-        draw_frame.bind(density_program);
-        draw_frame.set_int_uniforms({
+        density_vel_frame.bind(density_program);
+        density_vel_frame.set_int_uniforms({
             {"upTex", quads[ups1]->get_value()},
             {"leftCenterRightTex", quads[horiz1]->get_value()},
             {"downTex", quads[down1]->get_value()}});
-        draw_frame.draw();
+        density_vel_frame.draw();
         unbind();
     };
 
@@ -262,7 +256,7 @@ int main() {
         quads[down2]->bind(step_down_program);
         quads[down2]->set_int_uniforms({
             {"downTex", quads[down1]->get_value()},
-            {"densityVelTex", draw_frame.get_value()}
+            {"densityVelTex", density_vel_frame.get_value()}
         });
         quads[down2]->set_float_uniforms({
             {"omega", omega},
@@ -273,7 +267,7 @@ int main() {
         quads[horiz2]->bind(step_horizontals_program);
         quads[horiz2]->set_int_uniforms({
             {"leftCenterRightTex", quads[horiz1]->get_value()},
-            {"densityVelTex", draw_frame.get_value()}
+            {"densityVelTex", density_vel_frame.get_value()}
         });
         quads[horiz2]->set_float_uniforms({
             {"omega", omega},
@@ -284,7 +278,7 @@ int main() {
         quads[ups2]->bind(step_uppers_program);
         quads[ups2]->set_int_uniforms({
             {"upTex", quads[ups1]->get_value()},
-            {"densityVelTex", draw_frame.get_value()}
+            {"densityVelTex", density_vel_frame.get_value()}
         });
         quads[ups2]->set_float_uniforms({
             {"omega", omega},
@@ -345,7 +339,7 @@ int main() {
         quads[horiz2]->bind(add_vel_program);
         quads[horiz2]->set_int_uniform("tex", quads[horiz1]->get_value());
         quads[horiz2]->set_float_uniforms({
-            {"left", 0.0}, {"centre", 1.0}, {"right", 0.25}, {"dx", 1.0/width}
+            {"left", 0.0}, {"centre", 1.6}, {"right", 0.64}, {"dx", 2.0/width}
         });
         quads[horiz2]->draw();
         unbind();
@@ -366,6 +360,7 @@ int main() {
                 steps();
             }
             streams();
+            add_vel();
         }
         // glViewport needs to be called whenever switching
         // to framebuffers of different sizes:
@@ -381,6 +376,7 @@ int main() {
         view_frame.set_int_uniform("upsTex", quads[ups1]->get_value());
         view_frame.set_int_uniform("horizontalsTex", 
                                    quads[horiz1]->get_value());
+        view_frame.set_int_uniform("densityVelTex", density_vel_frame.get_value());
         view_frame.set_int_uniform("downTex", quads[down1]->get_value());
         view_frame.set_int_uniform("viewMode", view_mode);
         view_frame.draw();

@@ -6,6 +6,7 @@ uniform sampler2D downTex;
 uniform sampler2D horizontalsTex;
 uniform sampler2D upsTex;
 uniform sampler2D barrierTex;
+uniform sampler2D densityVelTex;
 uniform int viewMode;
 
 
@@ -47,23 +48,26 @@ void main() {
     vec4 u = texture2D(upsTex, st);
     vec4 col;
     if (viewMode == 0) {
-        float curl = (u[2] - u[0]) - (d[2] - d[0]);
-        float a = 20.0*abs(curl);
-        // col = (1.0 - b[0])*vec4(0.5 + 20.0*vec3(abs(curl)), 1.0);
-        col = (1.0 - b[0])*vec4(h[1]/4.0 
-                                 + a*colour2D(curl, curl), 1.0);
+        float vx1 = texture2D(densityVelTex, vec2(st.x, st.y - 1.0/128.0))[1];
+        float vx2 = texture2D(densityVelTex, vec2(st.x, st.y + 1.0/128.0))[1];
+        float vy1 = texture2D(densityVelTex, vec2(st.x - 1.0/512.0, st.y))[2];
+        float vy2 = texture2D(densityVelTex, vec2(st.x + 1.0/512.0, st.y))[2];
+        float curl = vx2 - vx1 - (vy2 - vy1);
+        col = (1.0 - b[0])*vec4(0.25 + abs(10.0*curl)*
+                                colour2D(curl, curl), 1.0);  
     }
     else if (viewMode == 1) {
-        float a = 2.0*(h[1] - 0.5);
-        col = (1.0 - b[0])*vec4(a*colour2D(h[2], h[0]), 1.0);
-    } else if (viewMode == 2) {
-        float a = 2.0*h[1] - 1.0;
+        float a = texture2D(densityVelTex, st)[0];
+        a = 0.8*a - 0.9;
         col = vec4(vec3(a, a, a), 1.0);
-    } else if (viewMode == 3) {
-        float vDiff = u[2] - u[0];
-        float hDiff = d[2] - d[0];
-        float a = 0.75 + 10.0*(vDiff*vDiff + hDiff*hDiff);
-        col = (1.0 - b[0])*vec4(a*colour2D(hDiff, vDiff), 1.0);
+    } else if (viewMode == 2) {
+        float vx1 = texture2D(densityVelTex, vec2(st.x, st.y - 1.0/128.0))[1];
+        float vx2 = texture2D(densityVelTex, vec2(st.x, st.y + 1.0/128.0))[1];
+        float vy1 = texture2D(densityVelTex, vec2(st.x - 1.0/512.0, st.y))[2];
+        float vy2 = texture2D(densityVelTex, vec2(st.x + 1.0/512.0, st.y))[2];
+        float curl = vx2 - vx1 - (vy2 - vy1);
+        col = (1.0 - b[0])*vec4(0.25 + abs(10.0*curl)*
+                                colour2D(curl, 0.0), 1.0); 
     }
     gl_FragColor = col;
 }
