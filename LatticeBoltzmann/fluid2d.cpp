@@ -165,13 +165,13 @@ int main() {
         quads[1]->bind(init_cond_program);
         quads[1]->set_float_uniforms(
             // 1.6 : 0.64
-            {{"left", 0.0}, {"centre", 1.6}, {"right", 0.64}}
+            {{"left", 0.0}, {"centre", 1.6}, {"right", 0.6}}
             );
         quads[1]->draw();
         unbind();
         quads[4]->bind(init_cond_program);
         quads[4]->set_float_uniforms(
-            {{"left", 0.0}, {"centre", 1.6}, {"right", 0.64}}
+            {{"left", 0.0}, {"centre", 1.6}, {"right", 0.6}}
             );
         quads[4]->draw();
         unbind();
@@ -180,8 +180,8 @@ int main() {
     auto draw_barrier = [&] {
         auto scale_click_type = [&](double click_type) {
             return click_type;};
-        double w_stencil = 0.03;
-        double h_stencil = 0.03;
+        double w_stencil = 0.025;
+        double h_stencil = 0.025;
         // if (right_click.pressed) {
         //     w_stencil *= 10.0;
         //     h_stencil *= 10.0;
@@ -233,13 +233,13 @@ int main() {
         if (mouse_mode == DRAW_BARRIER) {
             draw_barrier();
         } else if (mouse_mode == DRAW_FLOW) {
-
+            // draw_fluid();
         }
     };
 
     int down1=0, horiz1=1, ups1=2;
     int down2=3, horiz2=4, ups2=5;
-    double omega = 1.0;
+    double omega = 1.5;
 
     auto density_mean_vel = [&]{
         density_vel_frame.bind(density_program);
@@ -354,13 +354,13 @@ int main() {
         if (left_click.pressed || right_click.pressed) {
             draw();
         }
-        for (int _ = 0; _ < 7; _++) {
+        for (int _ = 0; _ < 3; _++) {
             for (int p = 0; p < 1; p++) {
                 density_mean_vel();
                 steps();
             }
             streams();
-            add_vel();
+            // add_vel();
         }
         // glViewport needs to be called whenever switching
         // to framebuffers of different sizes:
@@ -372,6 +372,8 @@ int main() {
         glViewport(0, 0, view_ratio*width, view_ratio*height); 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         view_frame.bind(view_program);
+        view_frame.set_float_uniforms({{"dx", 1.0/width}, 
+                                       {"dy", 1.0/height}});
         view_frame.set_int_uniform("barrierTex", barrier.get_value());
         view_frame.set_int_uniform("upsTex", quads[ups1]->get_value());
         view_frame.set_int_uniform("horizontalsTex", 

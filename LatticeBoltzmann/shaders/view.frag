@@ -7,6 +7,8 @@ uniform sampler2D horizontalsTex;
 uniform sampler2D upsTex;
 uniform sampler2D barrierTex;
 uniform sampler2D densityVelTex;
+uniform float dx;
+uniform float dy;
 uniform int viewMode;
 
 
@@ -48,26 +50,22 @@ void main() {
     vec4 u = texture2D(upsTex, st);
     vec4 col;
     if (viewMode == 0) {
-        float vx1 = texture2D(densityVelTex, vec2(st.x, st.y - 1.0/128.0))[1];
-        float vx2 = texture2D(densityVelTex, vec2(st.x, st.y + 1.0/128.0))[1];
-        float vy1 = texture2D(densityVelTex, vec2(st.x - 1.0/512.0, st.y))[2];
-        float vy2 = texture2D(densityVelTex, vec2(st.x + 1.0/512.0, st.y))[2];
+        float vx1 = texture2D(densityVelTex, vec2(st.x, st.y - dy))[1];
+        float vx2 = texture2D(densityVelTex, vec2(st.x, st.y + dy))[1];
+        float vy1 = texture2D(densityVelTex, vec2(st.x - dx, st.y))[2];
+        float vy2 = texture2D(densityVelTex, vec2(st.x + dx, st.y))[2];
         float curl = vx2 - vx1 - (vy2 - vy1);
-        col = (1.0 - b[0])*vec4(0.25 + abs(10.0*curl)*
+        col = (1.0 - b[0])*vec4(0.25 + abs(15.0*curl)*
                                 colour2D(curl, curl), 1.0);  
     }
     else if (viewMode == 1) {
         float a = texture2D(densityVelTex, st)[0];
-        a = 0.8*a - 0.9;
+        a = 0.8*a - 1.0;
         col = vec4(vec3(a, a, a), 1.0);
     } else if (viewMode == 2) {
-        float vx1 = texture2D(densityVelTex, vec2(st.x, st.y - 1.0/128.0))[1];
-        float vx2 = texture2D(densityVelTex, vec2(st.x, st.y + 1.0/128.0))[1];
-        float vy1 = texture2D(densityVelTex, vec2(st.x - 1.0/512.0, st.y))[2];
-        float vy2 = texture2D(densityVelTex, vec2(st.x + 1.0/512.0, st.y))[2];
-        float curl = vx2 - vx1 - (vy2 - vy1);
-        col = (1.0 - b[0])*vec4(0.25 + abs(10.0*curl)*
-                                colour2D(curl, 0.0), 1.0); 
+        vec2 v = texture2D(densityVelTex, st).gb;
+        col = (1.0 - b[0])*vec4(0.25 + 5.0*sqrt(v.x*v.x + v.y*v.y)*
+                                colour2D(v.y, v.x), 1.0); 
     }
     gl_FragColor = col;
 }
