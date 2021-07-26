@@ -15,6 +15,8 @@ const char *init_dist_shader_source = R"(
 precision highp float;
 varying highp vec2 uv;
 uniform float amplitude;
+uniform float width;
+uniform float height;
 uniform float uc;
 uniform float vc;
 uniform float sx;
@@ -22,14 +24,19 @@ uniform float sy;
 uniform float r;
 uniform float g;
 uniform float b;
-uniform float a;
 
 
 void main() {
     float u = uv.x - uc;
     float v = uv.y - vc;
     float val = amplitude*exp(-u*u/(2.0*sx*sx))*exp(-v*v/(2.0*sy*sy));
-    gl_FragColor = vec4(r*val, g*val, b*val, a*val);
+    // gl_FragColor = vec4(r*val, g*val, b*val, 1.0);
+    if (uv.x > 1.0/width && uv.x < 1.0 - 1.0/width && 
+        uv.y > 1.0/height && uv.y < 1.0 - 1.0/height) {
+        gl_FragColor = vec4(r*val, g*val, b*val, 1.0);
+    } else {
+        gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0);
+    }
 })";
 const char *subtract_gradp_shader_source = R"(
 
@@ -70,7 +77,7 @@ void main() {
     vec4 u = texture2D(velocity1Tex, uv);
     vec4 col = vec4(0.0, 0.0, 0.0, 0.0);
     col += texture2D(velocity2Tex, uv - u.xy*dt);
-    gl_FragColor = col;
+    gl_FragColor = vec4(col.rgb*u.a*col.a, u.a);
 })";
 const char *add_forces_shader_source = R"(
 
@@ -84,7 +91,7 @@ uniform sampler2D uTex;
 void main() {
     vec4 F = texture2D(forceTex, uv);
     vec4 u = texture2D(uTex, uv);
-    gl_FragColor = u + F*dt;
+    gl_FragColor = vec4((u + F*dt).rgb, F.a);
 }
 )";
 const char *diffusion_iter_shader_source = R"(
@@ -209,6 +216,6 @@ void main() {
     vec4 v1 = texture2D(tex1, uv);
     vec4 v2 = texture2D(tex2, uv);
     vec4 v3 = v1 + v2;
-    gl_FragColor = v3;
+    gl_FragColor = vec4(v3.rgb, v1.a);
 })";
 #endif
