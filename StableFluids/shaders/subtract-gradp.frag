@@ -21,5 +21,5 @@ void main() {
                  - texture2D(pressureTex, vec2(uv.x, uv.y - dv))
                 )/(2.0*dy);
     vec4 u = texture2D(uTex, uv);
-    gl_FragColor = vec4(u.x - dpdx.x, u.y - dpdy.y, u.z, 1.0);
+    gl_FragColor = vec4(u.x - dpdx.x, u.y - dpdy.y, u.z, u.a);
 }

@@ -10,6 +10,5 @@ uniform sampler2D uTex;
 void main() {
     vec4 F = texture2D(forceTex, uv);
     vec4 u = texture2D(uTex, uv);
-    vec4 u2 = u + F*dt;
-    gl_FragColor = vec4(u2.rgb, 1.0);
+    gl_FragColor = vec4((u + F*dt).rgb, F.a);
 }

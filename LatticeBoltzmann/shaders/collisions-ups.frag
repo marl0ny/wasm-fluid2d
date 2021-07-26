@@ -42,6 +42,11 @@ void main() {
     vec2 upRight = vec2(1.0, 1.0);
     float upRightTotal = getUpdatedTotal(upRight, avgVel, up[2], density, 1.0/36.0);
 
-    gl_FragColor = vec4(upLeftTotal, upTotal, upRightTotal, 1.0);
+    gl_FragColor = vec4(upLeftTotal, upTotal, upRightTotal, up[3]);
+    /*if (up[3] == 0.0) {
+        gl_FragColor = up;
+    } else {
+        gl_FragColor = vec4(upLeftTotal, upTotal, upRightTotal, up[3]);
+    }*/
 
 }

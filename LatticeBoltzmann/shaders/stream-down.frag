@@ -29,6 +29,9 @@ void main() {
     downLeft += getReflecting(vec2(dx, dy))[2]; // reflect upper right
     downDown += getReflecting(vec2(0.0, dy))[1]; // reflect upper centre
     downRight += getReflecting(vec2(-dx, dy))[0]; // reflect upper left
+    float notSrc = texture2D(downTex, st)[3];
 
-    gl_FragColor = vec4(downLeft, downDown, downRight, 1.0);
+    gl_FragColor = vec4(notSrc*downLeft, 
+                        notSrc*downDown, 
+                        notSrc*downRight, notSrc);
 }

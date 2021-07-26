@@ -40,5 +40,5 @@ void main() {
         float dvydy = (center - down).y/dy;
         divVect = dvxdx + dvydy;
     }
-    gl_FragColor = vec4(divVect, divVect, divVect, 1.0);
+    gl_FragColor = vec4(divVect, divVect, divVect, divVect);
 }

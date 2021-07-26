@@ -6,6 +6,9 @@ uniform sampler2D centreTex;
 uniform sampler2D barrierTex;
 uniform float dx;
 uniform float dy;
+uniform float srcLeft;
+uniform float srcCentre;
+uniform float srcRight;
 
 vec4 getIncoming(vec2 from) {
     float barrier = texture2D(barrierTex, st + from)[0]; 
@@ -25,5 +28,9 @@ void main() {
     left += getReflecting(vec2(dx, 0.0))[2];
     right += getReflecting(vec2(-dx, 0.0))[0];
 
-    gl_FragColor = vec4(left, centre, right, 1.0);
+    float notSrc = texture2D(centreTex, st)[3];
+
+    gl_FragColor = vec4(left*notSrc + (1.0 - notSrc)*srcLeft, 
+                        centre*notSrc + (1.0 - notSrc)*srcCentre, 
+                        right*notSrc + (1.0 - notSrc)*srcRight, notSrc);
 }

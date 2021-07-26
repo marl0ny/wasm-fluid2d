@@ -1,8 +1,4 @@
-#ifndef __EMSCRIPTEN__
 #include "gl_wrappers2d/gl_wrappers.hpp"
-#else
-#include "gl_wrappers.hpp"
-#endif
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <utility>
@@ -129,12 +125,14 @@ int main() {
                                                   subtract_gradp_shader);
 
     Quad view_frame = Quad::make_frame(view_ratio*width, view_ratio*height);
+    // Quad d0 = Quad::make_float_frame(width, height);
     Quad q0 = Quad::make_float_frame(width, height);
     Quad q1 = Quad::make_float_frame(width, height);
     Quad q2 = Quad::make_float_frame(width, height);
     Quad p1 = Quad::make_float_frame(width, height);
     Quad p2 = Quad::make_float_frame(width, height);
     Quad forces = Quad::make_float_frame(width, height);
+    Quad blank = Quad::make_float_frame(width, height);
 
     auto copy_tex = [&](Quad *dest, Quad *src) {
         dest->bind(copy2_program);
@@ -146,16 +144,18 @@ int main() {
 
     auto init_fluid = [&]()  {
         q1.bind(init_fluid_program);
-        q1.set_float_uniforms({{"a", 2.0}, 
+        q1.set_float_uniforms({{"amplitude", 2.0}, 
                                {"uc", 0.25}, {"vc", 0.25}, 
                                {"sx", 0.1}, {"sy", 0.1},
-                               {"r", 1.0}, {"g", 1.0}, {"b", 1.0}});
+                               {"r", 1.0}, {"g", 1.0}, {"b", 1.0},
+                               {"width", width}, {"height", height}});
         q1.draw();
         q2.bind(init_fluid_program);
-        q2.set_float_uniforms({{"a", 2.0}, 
+        q2.set_float_uniforms({{"amplitude", 2.0}, 
                                {"uc", 0.75}, {"vc", 0.75}, 
                                {"sx", 0.1}, {"sy", 0.1}, 
-                               {"r", -1.0}, {"g", -1.0}, {"b", 1.0}});
+                               {"r", -1.0}, {"g", -1.0}, {"b", 1.0},
+                               {"width", width}, {"height", height}});
         q2.draw();
         unbind();
         q0.bind(copy2_program);
@@ -167,8 +167,8 @@ int main() {
 
     auto advect = [&](Quad *dest, Quad *src) {
         dest->bind(advection_program);
-        dest->set_int_uniform("velocityTex", src->get_value());
-        dest->set_int_uniform("positionTex", src->get_value());
+        dest->set_int_uniform("velocity1Tex", src->get_value());
+        dest->set_int_uniform("velocity2Tex", src->get_value());
         dest->set_float_uniform("dt", DT);
         dest->draw();
         unbind();
@@ -203,10 +203,11 @@ int main() {
                            double dx, double dy) {
         f->bind(init_fluid_program);
         f->set_float_uniforms({
-            {"a", 1.0}, 
+            {"amplitude", 1.0}, 
             {"uc", x}, {"vc", y}, 
             {"sx", 0.05}, {"sy", 0.05},
-            {"r", 10.0*dx}, {"g", 10.0*dy}, {"b", 1.0}
+            {"r", 10.0*dx}, {"g", 10.0*dy}, {"b", 1.0},
+            {"width", width}, {"height", height}
         });
         f->draw();
         unbind();
@@ -298,7 +299,9 @@ int main() {
         if (left_click.pressed)
             add_forces(quads[1], &forces, quads[0]);
         else
+            // add_forces(quads[1], &blank, quads[0]);
             std::swap(quads[1], quads[0]);
+        // std::swap(quads[1], quads[0]);
         divergence(&q0, quads[1]);
         // copy_tex(&p1, quads[1]);
         Quad *p_arr[2] = {&p1, &p2};

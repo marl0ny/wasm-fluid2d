@@ -5,17 +5,16 @@ varying vec2 st;
 uniform float left;
 uniform float centre;
 uniform float right;
+uniform float sx;
+uniform float sy;
 uniform float xc;
 uniform float yc;
-uniform float dx;
 uniform sampler2D tex;
 
 void main() {
-    if (st.x < dx) {
-    vec4 color = texture2D(tex, st);
-    color[3] = min(color[3], color[3] + right);
-    gl_FragColor = color;
-    } else {
-    gl_FragColor = texture2D(tex, st);
-    }
+    float x = st.x - xc;
+    float y = st.y - yc;
+    float dist = exp(-0.5*(x*x/(sx*sx) + y*y/(sy*sy)));
+    vec3 newParticles = dist*vec3(left, centre, right);
+    gl_FragColor = texture2D(tex, st) + vec4(newParticles, 0.0);
 }

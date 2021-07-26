@@ -8,13 +8,13 @@ uniform sampler2D tex;
 
 void main() {
     vec4 col = texture2D(tex, uv);
-    gl_FragColor = vec4(col.b, col.b, col.b, 1.0);
+    gl_FragColor = vec4(col[2], col[2], col[2], 1.0);
 })";
 const char *init_dist_shader_source = R"(
 
 precision highp float;
 varying highp vec2 uv;
-uniform float a;
+uniform float amplitude;
 uniform float uc;
 uniform float vc;
 uniform float sx;
@@ -22,13 +22,14 @@ uniform float sy;
 uniform float r;
 uniform float g;
 uniform float b;
+uniform float a;
 
 
 void main() {
     float u = uv.x - uc;
     float v = uv.y - vc;
-    float val = a*exp(-u*u/(2.0*sx*sx))*exp(-v*v/(2.0*sy*sy));
-    gl_FragColor = vec4(r*val, g*val, b*val, 1.0);
+    float val = amplitude*exp(-u*u/(2.0*sx*sx))*exp(-v*v/(2.0*sy*sy));
+    gl_FragColor = vec4(r*val, g*val, b*val, a*val);
 })";
 const char *subtract_gradp_shader_source = R"(
 
@@ -53,7 +54,7 @@ void main() {
                  - texture2D(pressureTex, vec2(uv.x, uv.y - dv))
                 )/(2.0*dy);
     vec4 u = texture2D(uTex, uv);
-    gl_FragColor = vec4(u.x - dpdx.x, u.y - dpdy.y, u.z, 1.0);
+    gl_FragColor = vec4(u.x - dpdx.x, u.y - dpdy.y, u.z, u.a);
 }
 )";
 const char *advection_shader_source = R"(
@@ -61,22 +62,14 @@ const char *advection_shader_source = R"(
 precision highp float;
 varying highp vec2 uv;
 uniform float dt;
-uniform sampler2D velocityTex;
-uniform sampler2D positionTex;
+uniform sampler2D velocity1Tex;
+uniform sampler2D velocity2Tex;
 
 
 void main() {
-    vec4 u = texture2D(velocityTex, uv);
+    vec4 u = texture2D(velocity1Tex, uv);
     vec4 col = vec4(0.0, 0.0, 0.0, 0.0);
-
-    col += texture2D(positionTex, uv - u.xy*dt);
-
-    /*float width = 256;
-    float height = 256;
-    ivec2 intLookupPos = ivec2(int(width*(uv.x - u.x*dt)), 
-                               int(height*(uv.y - u.y*dt)));
-    col += texelFetch(positionTex, intLookupPos, 0);*/
-
+    col += texture2D(velocity2Tex, uv - u.xy*dt);
     gl_FragColor = col;
 })";
 const char *add_forces_shader_source = R"(
@@ -91,8 +84,7 @@ uniform sampler2D uTex;
 void main() {
     vec4 F = texture2D(forceTex, uv);
     vec4 u = texture2D(uTex, uv);
-    vec4 u2 = u + F*dt;
-    gl_FragColor = vec4(u2.rgb, 1.0);
+    gl_FragColor = u + F*dt;
 }
 )";
 const char *diffusion_iter_shader_source = R"(
@@ -165,7 +157,7 @@ void main() {
         float dvydy = (center - down).y/dy;
         divVect = dvxdx + dvydy;
     }
-    gl_FragColor = vec4(divVect, divVect, divVect, 1.0);
+    gl_FragColor = vec4(divVect, divVect, divVect, divVect);
 })";
 const char *vertices_shader_source = R"(
 
@@ -217,6 +209,6 @@ void main() {
     vec4 v1 = texture2D(tex1, uv);
     vec4 v2 = texture2D(tex2, uv);
     vec4 v3 = v1 + v2;
-    gl_FragColor = vec4(v3.xyz, 1.0);
+    gl_FragColor = v3;
 })";
 #endif

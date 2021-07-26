@@ -1,5 +1,9 @@
 fluid2d
 ~*
 *.o
+*.ini
 .*
+/_*
 !.gitignore
+/imgui
+/*/imgui
