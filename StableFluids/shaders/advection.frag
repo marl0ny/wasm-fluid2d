@@ -9,7 +9,6 @@ uniform sampler2D velocity2Tex;
 
 void main() {
     vec4 u = texture2D(velocity1Tex, uv);
-    vec4 col = vec4(0.0, 0.0, 0.0, 0.0);
-    col += texture2D(velocity2Tex, uv - u.xy*dt);
-    gl_FragColor = vec4(col.rgb*u.a*col.a, u.a);
+    vec4 col = texture2D(velocity2Tex, uv - u.xy*dt);
+    gl_FragColor = vec4(col[0]*u[2], col[1]*u[3], u[2], u[3]);
 }

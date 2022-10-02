@@ -132,6 +132,7 @@ int main() {
     Quad p1 = Quad::make_float_frame(width, height);
     Quad p2 = Quad::make_float_frame(width, height);
     Quad forces = Quad::make_float_frame(width, height);
+    Quad densities = Quad::make_float_frame(width, height);
     Quad blank = Quad::make_float_frame(width, height);
 
     auto copy_tex = [&](Quad *dest, Quad *src) {
@@ -287,6 +288,8 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         view_frame.bind(view_program);
         view_frame.set_int_uniform("tex", quads[0]->get_value());
+	view_frame.set_float_uniforms({{"dx", Lx/(float)width},
+				       {"dy", Ly/(float)height}});
         view_frame.draw();
         unbind();
         glViewport(0, 0, width, height);
