@@ -11,12 +11,8 @@ out vec4 fragColor;
 varying highp vec2 UV;
 #endif
 
-uniform sampler2D tex1;
-uniform sampler2D tex2;
+uniform sampler2D tex;
 
 void main() {
-    vec4 v1 = texture2D(tex1, UV);
-    vec4 v2 = texture2D(tex2, UV);
-    vec4 v3 = v1 + v2;
-    fragColor = vec4(v3.rgb, 1.0);
+    fragColor = texture2D(tex, UV);
 }

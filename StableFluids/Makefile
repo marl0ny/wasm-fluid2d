@@ -1,23 +1,28 @@
+MACOSX_HOMEBREW = yes
+
 SHELL = /bin/bash
+FLAGS = -O0 -Wall -g
+# FLAGS = -O2 -Wall
+COMPILE = /usr/bin/clang
 
-COMPILE = /usr/bin/clang++
-FLAGS = -O0 -Wall -g -std=c++11
-# COMPILE = /usr/bin/g++ 
-# FLAGS = -Og -Wall -g
 
-INCLUDE = -I${PWD}/gl_wrappers2d
+ifdef MACOSX_HOMEBREW
+INCLUDE =  -I${PWD} -I${PWD}/gl_wrappers -I/opt/homebrew/include
+LIBS = -ldl -L/opt/homebrew/lib -lglfw\
+       -framework CoreVideo -framework OpenGL -framework IOKit\
+       -framework Cocoa -framework Carbon
+else
+INCLUDE =  -I${PWD} -I${PWD}/gl_wrappers
 LIBS = -lm -lGL -lGLEW -lglfw
+endif
 
-TARGETDIR = .
+TARGET = ${PWD}/program
+WASM_TARGET = ${PWD}/fluid.js
+SOURCES = ${PWD}/gl_wrappers/gl_wrappers.c main.c
+OBJECTS = gl_wrappers.o main.o
 
-TARGET = ${TARGETDIR}/fluid2d
-SOURCES = fluid2d.cpp ${PWD}/gl_wrappers2d/gl_wrappers.cpp
-OBJECTS = fluid2d.o gl_wrappers.o
 
-TARGET2 = ${TARGETDIR}/fluid.js
-SCRIPT = make_shaders_h.py
-
-all: ${TARGET} # ${TARGET2}
+all: ${TARGET}
 
 ${TARGET}: ${OBJECTS}
 	${COMPILE} ${FLAGS} -o $@ $^ ${LIBS}
@@ -25,12 +30,8 @@ ${TARGET}: ${OBJECTS}
 ${OBJECTS}: ${SOURCES}
 	${COMPILE} ${FLAGS} -c $^ ${INCLUDE}
 
-${TARGET2}: ${SOURCES}
-	python3 ${SCRIPT}
-	cp ./gl_wrappers2d/* ./
-	emcc -o $@ $^ -std=c++11 -O3 -s WASM=1 -s USE_GLFW=3 -s FULL_ES2=1
-	rm -f shaders.h gl_wrappers.*
+${WASM_TARGET}: ${SOURCES}
+	echo "TODO!!!" > fluid.js 
 
 clean:
 	rm -f *.o ${TARGET}
-

@@ -3,6 +3,7 @@ fluid2d
 *.o
 *.ini
 .*
+.DS_Store
 /_*
 !.gitignore
 /imgui
