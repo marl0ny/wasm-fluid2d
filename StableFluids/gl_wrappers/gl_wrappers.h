@@ -2,6 +2,11 @@
 // #define GLFW_INCLUDE_GLCOREARB
 #define GLFW_INCLUDE_ES3
 #include <GLFW/glfw3.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifndef _GL_WRAPPERS
 #define _GL_WRAPPERS
 
@@ -66,6 +71,24 @@ struct UVec2 {
     };
 };
 
+struct Vec3 {
+    union {
+        struct { float x, y, z; };
+        struct { float r, g, b; };
+        struct { float s, t, p; };
+        struct { float ind[3]; };
+    };
+};
+
+struct DVec3 {
+    union {
+        struct { double x, y, z; };
+        struct { double r, g, b; };
+        struct { double s, t, p; };
+        struct { double ind[3]; };
+    };
+};
+
 struct Vec4 {
     union {
         struct { float x, y, z, w; };
@@ -107,6 +130,8 @@ GLFWwindow *init_window(int width, int height);
 
 GLuint make_program(const char *paht_to_fragment_shader_file);
 
+GLuint make_program_from_string_source(const char *src);
+
 frame_id new_quad(const struct TextureParams *texture_params);
 
 void bind_quad(frame_id quad_id, GLuint program);
@@ -140,4 +165,9 @@ void substitute_array(int quad_id, int width, int height,
                       int texture_type, void *array);
 
 
+#endif
+
+
+#ifdef __cplusplus
+}
 #endif

@@ -3,12 +3,12 @@
 precision highp float;
 
 #if __VERSION__ >= 300
-in vec2 UV;
+in vec2 uv;
 out vec4 fragColor;
 #define texture2D texture
 #else
-#define fragColor fragColor
-varying highp vec2 UV;
+#define fragColor gl_FragColor
+varying highp vec2 uv;
 #endif
 
 uniform float amplitude;
@@ -24,12 +24,12 @@ uniform float b;
 
 
 void main() {
-    float u = UV.x - uc;
-    float v = UV.y - vc;
+    float u = uv.x - uc;
+    float v = uv.y - vc;
     float val = amplitude*exp(-u*u/(2.0*sx*sx))*exp(-v*v/(2.0*sy*sy));
     // fragColor = vec4(r*val, g*val, b*val, 1.0);
-    if (UV.x > 1.0/width && UV.x < 1.0 - 1.0/width && 
-        UV.y > 1.0/height && UV.y < 1.0 - 1.0/height) {
+    if (uv.x > 1.0/width && uv.x < 1.0 - 1.0/width && 
+        uv.y > 1.0/height && uv.y < 1.0 - 1.0/height) {
         fragColor = vec4(r*val, g*val, b*val, 1.0);
     } else {
         fragColor = vec4(0.0, 0.0, 0.0, 0.0);

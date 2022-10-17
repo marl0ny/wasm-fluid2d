@@ -16,8 +16,10 @@ INCLUDE =  -I${PWD} -I${PWD}/gl_wrappers
 LIBS = -lm -lGL -lGLEW -lglfw
 endif
 
+WEB_INCLUDE = ${INCLUDE} -I${HOME}/emsdk/upstream/emscripten/system/include
+
 TARGET = ${PWD}/program
-WASM_TARGET = ${PWD}/fluid.js
+WEB_TARGET = main.js
 SOURCES = ${PWD}/gl_wrappers/gl_wrappers.c main.c
 OBJECTS = gl_wrappers.o main.o
 
@@ -27,11 +29,13 @@ all: ${TARGET}
 ${TARGET}: ${OBJECTS}
 	${COMPILE} ${FLAGS} -o $@ $^ ${LIBS}
 
+${WEB_TARGET}: ${SOURCES}
+	EMCC_DEBUG=1
+	emcc -o $@ $^ ${INCLUDE} -v -s WASM=1 -s USE_GLFW=3 -s FULL_ES3=1 \
+    -s TOTAL_MEMORY=100MB --embed-file shaders
+
 ${OBJECTS}: ${SOURCES}
 	${COMPILE} ${FLAGS} -c $^ ${INCLUDE}
 
-${WASM_TARGET}: ${SOURCES}
-	echo "TODO!!!" > fluid.js 
-
 clean:
-	rm -f *.o ${TARGET}
+	rm -f *.o *.js *.wasm ${TARGET}

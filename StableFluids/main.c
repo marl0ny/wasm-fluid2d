@@ -4,7 +4,10 @@
 #include <math.h>
 #include "gl_wrappers.h"
 #include "gl_wrappers/gl_wrappers.h"
-
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#include <emscripten/html5.h>
+#endif
 
 struct Click {
     double x, y;
@@ -238,6 +241,82 @@ void time_step(const struct SimParams *sim_params,
 
 struct Vec4 arr[1024*1024];
 
+
+struct MainLoopData {
+    struct SimParams *sim_params;
+    struct DistParams *dist_params;
+    struct Programs *programs;
+    struct Frames *quads;
+    GLFWwindow *window;
+    struct Click *left_click;
+    int iter;
+    int width, height, pixel_width, pixel_height;
+
+} data;
+
+void main_loop() {
+    struct SimParams *sim_params = data.sim_params;
+    struct DistParams *dist_params = data.dist_params;
+    struct Programs *programs = data.programs;
+    struct Frames *quads = data.quads;
+    GLFWwindow *window = data.window;
+    struct Click *left_click = data.left_click;
+    int iter = data.iter;
+    int width = data.width, height = data.height;
+    int pixel_width = data.pixel_width, pixel_height = data.pixel_height;
+    int k = iter;
+    if (left_click->pressed && k >= 0) {
+        float r = dist_params->r, g = dist_params->g, b = dist_params->b;
+        dist_params->r = left_click->dx;
+        dist_params->g = left_click->dy;
+        dist_params->b = 1.0;
+        dist_params->uc = left_click->x;
+        dist_params->vc = left_click->y;
+        dist_params->width = (float)pixel_width;
+        dist_params->height = (float)pixel_height;
+        init_dist(programs->init_dist,
+                  dist_params, quads->force);
+        dist_params->r = r;
+        dist_params->g = g;
+        dist_params->b = b;
+        init_dist(programs->init_dist, dist_params,
+                    quads->init_density);
+        bind_quad(quads->densities2[1], programs->copy2);
+        set_sampler2D_uniform("tex1", quads->init_density);
+        set_sampler2D_uniform("tex2", quads->densities2[0]);
+        swap_frames(&quads->densities2[0], &quads->densities2[1]);
+        draw_unbind();
+    } else {
+        bind_quad(quads->force, programs->zero);
+        draw_unbind();
+    }
+
+    time_step(sim_params, dist_params, programs, quads);
+    swap_frames(&quads->densities2[0], &quads->densities2[1]);
+
+    glViewport(0, 0, pixel_width, pixel_height);
+    bind_quad(quads->view, programs->view);
+    set_sampler2D_uniform("texCol", quads->densities2[0]);
+    set_sampler2D_uniform("texVel", quads->start_finish);
+    draw_unbind();
+    glViewport(0, 0, width, height);
+
+    key_modify_params(window, dist_params, sim_params);
+    if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS) {
+        substitute_array(quads->densities2[0],
+                            width, height, GL_FLOAT, (void *)arr);
+        substitute_array(quads->densities2[1],
+                            width, height, GL_FLOAT, (void *)arr);
+
+    }
+    glfwPollEvents();
+    click_update(left_click, window);
+    glfwSwapBuffers(window);
+    #ifdef __EMSCRIPTEN__
+    data.iter++;
+    #endif
+}
+
 int main() {
 
     int width = 256, height = 256;
@@ -282,7 +361,7 @@ int main() {
         .type=GL_FLOAT,
         .width=width, .height=height,
         .generate_mipmap=1,
-        .wrap_s=GL_REPEAT, .wrap_t=GL_REPEAT,
+        .wrap_s=GL_CLAMP_TO_EDGE, .wrap_t=GL_CLAMP_TO_EDGE,
         .min_filter=GL_LINEAR, .mag_filter=GL_LINEAR,
     };
     quads.all[0] = new_quad(NULL);
@@ -293,6 +372,7 @@ int main() {
     draw_unbind();
     bind_quad(quads.densities2[1], programs.zero);
     draw_unbind();
+
     substitute_array(quads.densities2[0],
                      width, height, GL_FLOAT, (void *)arr);
     substitute_array(quads.densities2[1],
@@ -314,58 +394,34 @@ int main() {
     dist_params.g = 0.0;
     dist_params.b = 0.0;
     dist_params.amplitude = 16.0;
+    dist_params.uc = 0.5;
+    dist_params.vc = 0.5;
 
+    init_dist(programs.init_dist, &dist_params, quads.init_density);
+    init_dist(programs.init_dist, &dist_params, quads.densities2[0]);
+    init_dist(programs.init_dist, &dist_params, quads.densities2[1]);
+
+    data.sim_params = &sim_params;
+    data.dist_params = &dist_params;
+    data.programs = &programs;
+    data.quads = &quads;
+    data.window = window;
+    data.left_click = &left_click;
+    data.iter = 0;
+    data.width = width;
+    data.height = height;
+    data.pixel_width = pixel_width;
+    data.pixel_height = pixel_height;
+
+    #ifdef __EMSCRIPTEN__
+    data.iter++;
+    emscripten_set_main_loop(main_loop, 0, 1);
+    #else
     for (int k = 0; !glfwWindowShouldClose(window); k++) {
-        if (left_click.pressed && k >= 0) {
-            float r = dist_params.r, g = dist_params.g, b = dist_params.b;
-            dist_params.r = left_click.dx;
-            dist_params.g = left_click.dy;
-            dist_params.b = 1.0;
-            dist_params.uc = left_click.x;
-            dist_params.vc = left_click.y;
-            dist_params.width = (float)pixel_width;
-            dist_params.height = (float)pixel_height;
-            init_dist(programs.init_dist,
-                      &dist_params, quads.force);
-            dist_params.r = r;
-            dist_params.g = g;
-            dist_params.b = b;
-            init_dist(programs.init_dist, &dist_params,
-                      quads.init_density);
-            bind_quad(quads.densities2[1], programs.copy2);
-            set_sampler2D_uniform("tex1", quads.init_density);
-            set_sampler2D_uniform("tex2", quads.densities2[0]);
-            swap_frames(&quads.densities2[0], &quads.densities2[1]);
-            draw_unbind();
-        } else {
-            bind_quad(quads.force, programs.zero);
-            draw_unbind();
-        }
-
-        time_step(&sim_params, &dist_params, &programs, &quads);
-        swap_frames(&quads.densities2[0], &quads.densities2[1]);
-
-        glViewport(0, 0, pixel_width, pixel_height);
-        bind_quad(quads.view, programs.view);
-        set_sampler2D_uniform("texCol", quads.densities2[0]);
-        set_sampler2D_uniform("texVel", quads.start_finish);
-        draw_unbind();
-        glViewport(0, 0, width, height);
-
-        key_modify_params(window, &dist_params, &sim_params);
-        if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS) {
-            substitute_array(quads.densities2[0],
-                             width, height, GL_FLOAT, (void *)arr);
-            substitute_array(quads.densities2[1],
-                             width, height, GL_FLOAT, (void *)arr);
-
-        }
-
-        glfwPollEvents();
-        click_update(&left_click, window);
-        // glViewport(0, 0, width, height);
-        glfwSwapBuffers(window);
+        data.iter = k;
+        main_loop();
     }
+    #endif
     glfwDestroyWindow(window);
     glfwTerminate();
     return 0;

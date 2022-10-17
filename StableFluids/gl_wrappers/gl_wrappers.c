@@ -8,21 +8,18 @@
 
 static const char VERTEX_SHADER_SOURCE[] = ""
     "#version 330 core\n"
-    "\n"
     "precision highp float;\n"
-    "\n"
     "#if __VERSION__ >= 300\n"
     "in vec3 position;\n"
-    "out highp vec2 UV;\n"
+    "out highp vec2 uv;\n"
     "#else\n"
-    "attribute vec3 position;\n"
-    "varying highp UV;\n"
+    "#attribute vec3 position\n"
+    "varying highp vec2 uv;\n"
     "#endif\n"
-    "\n"
-    "void main() {\n"
-    "    gl_Position = vec4(position.xyz, 1.0);\n"
-    "    UV = position.xy/2.0 + vec2(0.5, 0.5);\n"
-    "}\n";
+    "void main() {"
+    "    gl_Position = vec4(position.xyz, 1.0);"
+    "    uv = vec2(0.5, 0.5) + position.xy/2.0;"
+    "}";
 
 struct Frame {
     int frame_type;
@@ -41,7 +38,7 @@ static int current_frame_id = 0;
 static int total_frames = 0;
 static float vertices[12] = {
     -1.0, -1.0, 0.0,
-     -1.0, 1.0, 0.0, 
+    -1.0, 1.0, 0.0,
      1.0, 1.0, 0.0, 
      1.0, -1.0, 0.0};
 static int elements[6] = {
@@ -77,9 +74,22 @@ GLFWwindow *init_window(int width, int height) {
     return window;
 }
 
+#include <string.h>
+
 void compile_shader(GLuint shader_ref, const char *shader_source) {
     char buf[512];
+    char *f_buf = (char *)calloc(80000, sizeof(char));
+    #ifdef __EMSCRIPTEN__
+    // for (int i = 0; shader_source[i]; i++) f_buf[i] = shader_source[i];
+    char *tmp = "#version 300 es  \n";
+    strcat(f_buf, tmp);
+    strcat(f_buf, &((char *)shader_source)[18]);
+    // for (int i = 0; tmp[i]; i++) f_buf[i] = tmp[i];
+    const char *ptr_f_buf = (const char *)f_buf;
+    glShaderSource(shader_ref, 1, &ptr_f_buf, NULL);
+    #else
     glShaderSource(shader_ref, 1, &shader_source, NULL);
+    #endif
     glCompileShader(shader_ref);
     GLint status;
     glGetShaderiv(shader_ref, GL_COMPILE_STATUS, &status);
@@ -91,6 +101,8 @@ void compile_shader(GLuint shader_ref, const char *shader_source) {
     } else {
         fprintf(stderr, "%s\n%s", "Shader compilation failed:", buf);
     }
+    // printf("%s\n", f_buf);
+    free(f_buf);
 }
 
 GLuint make_vertex_shader(const char *v_source) {
@@ -166,7 +178,32 @@ GLuint make_program(const char *frag_shader_loc) {
         vertex_shader_ref = make_vertex_shader(VERTEX_SHADER_SOURCE);
     }
     GLuint vs_ref = vertex_shader_ref;
+    fprintf(stdout, "Compiling %s.\n", frag_shader_loc);
     GLuint fs_ref = get_shader(frag_shader_loc, GL_FRAGMENT_SHADER);
+    GLuint program = glCreateProgram();
+    if (program == 0) {
+        fprintf(stderr, "Unable to create program.\n");
+    }
+    glAttachShader(program, vs_ref);
+    glAttachShader(program, fs_ref);
+    glLinkProgram(program);
+    GLint status;
+    char buf[512];
+    glGetProgramiv(program, GL_LINK_STATUS, &status);
+    glGetProgramInfoLog(program, 512, NULL, buf);
+    if (status != GL_TRUE) {
+        fprintf(stderr, "%s\n%s", "Failed to link program:", buf);
+    }
+    glUseProgram(program);
+    return program;
+}
+
+GLuint make_program_from_string_source(const char *src) {
+    if (vertex_shader_ref < 0) {
+        vertex_shader_ref = make_vertex_shader(VERTEX_SHADER_SOURCE);
+    }
+    GLuint vs_ref = vertex_shader_ref;
+    GLuint fs_ref = make_fragment_shader(src);
     GLuint program = glCreateProgram();
     if (program == 0) {
         fprintf(stderr, "Unable to create program.\n");
@@ -187,7 +224,20 @@ GLuint make_program(const char *frag_shader_loc) {
 }
 
 void quad_init_texture(const struct TextureParams *params) {
-    if (current_frame_id <= 0) return;
+    if (current_frame_id <= 0) {
+        #ifdef __EMSCRIPTEN__
+        GLuint texture;
+        glGenTextures(1, &texture);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        current_frame->texture = texture;
+        #endif
+        glActiveTexture(GL_TEXTURE0);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+                        GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
+                        GL_LINEAR);
+        return;
+    }
     glActiveTexture(GL_TEXTURE0 + current_frame_id);
     GLuint texture;
     glGenTextures(1, &texture);
@@ -262,6 +312,7 @@ int new_quad(const struct TextureParams *texture_params) {
 }
 
 void bind_quad(int quad_id, GLuint program) {
+    // if (program > 1000) program = 24;
     if (current_frame != NULL) {
         fprintf(stderr, ERR_FRAME_ACTIVE);
         return;
@@ -274,20 +325,26 @@ void bind_quad(int quad_id, GLuint program) {
     current_frame = &frames[quad_id];
     current_frame->program = program;
     glUseProgram(program);
+    if (!current_frame->program) {
+        unbind();
+        return;
+    }
     glBindVertexArray(current_frame->vao);
     glBindBuffer(GL_ARRAY_BUFFER, current_frame->vbo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, current_frame->ebo);
     if (current_frame_id != 0) {
         glBindFramebuffer(GL_FRAMEBUFFER, current_frame->fbo);
     }
-    // glActiveTexture(GL_TEXTURE0 + quad_id);
-    GLint attrib = glGetAttribLocation(current_frame->program,
+    GLint attrib = glGetAttribLocation(program,
                                        quad_attribute_position);
     glEnableVertexAttribArray(attrib);
     glVertexAttribPointer(attrib, 3, GL_FLOAT, GL_FALSE, 3*4, 0);
 }
 
 void check_uniform_name_is_valid(const char *name, int ref) {
+    #ifdef __EMSCRIPTEN__
+    printf("\0%s\n", name); // Somehow fixes issues with utf-8 stuff.
+    #endif
     if (ref < 0) {
         fprintf(stderr,
                 "No such uniform \"%s\" for program %d.\n",
@@ -376,13 +433,17 @@ void print_user_defined_uniforms() {
                            buf_size, &length, &size_uniform,
                            &type, name);
         char *type_name;
+        const char MEDP_FLOAT[] = "mediump float";
+        const char HIGHP_FLOAT[] = "highp float";
+        const char STR_INT[] = "int";
+        const char STR_UINT[] = "uint";
         float f_param;
         float f_params[4];
         int i_param;
         switch(type) {
         case GL_FLOAT: case GL_HALF_FLOAT:
-            if (type==GL_HALF_FLOAT) type_name = "mediump float";
-            if (type==GL_FLOAT) type_name = "highp float";
+            if (type==GL_HALF_FLOAT) type_name = (char *)MEDP_FLOAT;
+            if (type==GL_FLOAT) type_name = (char *)HIGHP_FLOAT;
             glGetUniformfv(current_frame->program, index,
                            &f_param);
             fprintf(stdout, "%s %s = %f\n",
@@ -405,8 +466,8 @@ void print_user_defined_uniforms() {
             break;
         case GL_INT: case GL_UNSIGNED_INT:
             // case GL_SHORT: case GL_UNSIGNED_SHORT:
-            if (type==GL_INT) type_name = "int";
-            if (type==GL_UNSIGNED_INT) type_name = "uint";
+            if (type==GL_INT) type_name = (char *)STR_INT;
+            if (type==GL_UNSIGNED_INT) type_name =  (char *)STR_UINT;
             glGetUniformiv(current_frame->program, index,
                            &i_param);
             fprintf(stdout, "%s %s = %d\n",
@@ -421,9 +482,6 @@ void print_user_defined_uniforms() {
         default:
             fprintf(stdout, "%s of type %x\n", name, type);
         }
-        /*if (glGetError() != GL_INVALID_VALUE) {
-            fprintf(stdout, "%s, %d\n", name, type);
-            }*/
     }
     puts("");
 }
