@@ -7,4 +7,5 @@ fluid2d
 /_*
 !.gitignore
 /imgui
-/*/imgui
+/**/imgui
+*.zip
