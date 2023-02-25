@@ -101,9 +101,9 @@ int main() {
     ImGui::StyleColorsClassic();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     #ifndef __EMSCRIPTEN__
-    ImGui_ImplOpenGL3_Init("#version 330");
+    ImGui_ImplOpenGL3_Init("#version 330 core");
     #else
-    ImGui_ImplOpenGL3_Init("#version 330");
+    ImGui_ImplOpenGL3_Init("#version 300 es");
     #endif
 
     glViewport(0, 0, width, height);

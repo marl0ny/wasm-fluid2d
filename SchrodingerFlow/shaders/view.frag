@@ -113,68 +113,65 @@ void main() {
                                           (wavefunc2[3] + wavefunc0[3])/2.0);
     float potentialBrightness = texture2D(texPotential, UV).w
                                 *potentialBrightnessScale;
-    switch(viewMode) {
-        case DENSITY_PHASE1:
-            fragColor = vec4(wavefuncBrightness1*wavefuncColour1
-                                + potentialBrightness/50.0, 1.0);
-            break;
-        case DENSITY_PHASE2:
-            fragColor = vec4(wavefuncBrightness2*wavefuncColour2
-                                + potentialBrightness/50.0, 1.0);
-            break;
-        case DENSITY1:
-            fragColor = vec4(wavefuncBrightness1*vec3(1.0, 1.0, 1.0)
-                                + potentialBrightness/50.0, 1.0);
-            break;
-        case DENSITY2:
-            fragColor = vec4(wavefuncBrightness2*vec3(1.0, 1.0, 1.0)
-                                + potentialBrightness/50.0, 1.0);
-            break;
-        case DENSITY_PHASE_ALL:
-            fragColor = vec4(wavefuncBrightness1*wavefuncColour1
-                                + wavefuncBrightness2*wavefuncColour2
-                                + potentialBrightness/50.0, 1.0);
-            break;
-        case DENSITY_ALL_DIFF_COLOURS:
-            fragColor = vec4(vec3(wavefuncBrightness1, 0.0,
-                                     wavefuncBrightness2)
-                                + potentialBrightness/50.0, 1.0);
-            break;
-        case SPIN:
-            complex2 reWavefunc1 = complex2(wavefunc1[0], 0.0,
-                                            wavefunc1[2], 0.0);
-            complex2 imWavefunc02 = complex2(0.0, wavefunc2[1] + wavefunc0[1],
-                                             0.0, wavefunc2[3] + wavefunc0[3]);
-            complex2 psi = reWavefunc1 + imWavefunc02/2.0;
-            float absPsi = sqrt(psi[0]*psi[0] + psi[1]*psi[1]
-                                + psi[2]*psi[2] + psi[3]*psi[3]);
-            float nx = complex2Dot(conj(psi), sigmaX(psi))[0];
-            float ny = complex2Dot(conj(psi), sigmaY(psi))[0];
-            float nz = complex2Dot(conj(psi), sigmaZ(psi))[0];
-            fragColor = vec4(absPsi*(sqrt(nx*nx + ny*ny)*
-                             complexToColour(nx, ny) + abs(nz))
-                             + potentialBrightness/50.0, 1.0);
-            break;
-        case CURRENT:
-            vec4 current = texture2D(texCurrent, UV);
-            float currentSquared = current.x*current.x + current.y*current.y; 
-            float currentNorm = sqrt(currentSquared);
-            fragColor = 1.0*vec4(currentNorm, currentNorm, currentNorm, 1.0);
-            break;
-        case DEL_DOT_CURRENT:
-            float delDotCurrent
-                = 100.0*texture2D(texDelDotCurrent, UV)[0];
-            fragColor = vec4(delDotCurrent,
-                             -delDotCurrent, -delDotCurrent, 1.0);
-            break;
-        case COLOUR_DENSITY:
-            vec4 colour = texture2D(texColourDensity, UV);
-            fragColor = vec4(colour.rgb, 1.0);
-            break;
-        default:
-            fragColor = vec4((wavefuncBrightness1 + wavefuncBrightness2)
-                                *vec3(1.0, 1.0, 1.0)
-                                + potentialBrightness/50.0, 1.0);
-            break;
+    if (viewMode == DENSITY_PHASE1) {
+        fragColor = vec4(wavefuncBrightness1*wavefuncColour1
+                            + potentialBrightness/50.0, 1.0);
+    } else if (viewMode == DENSITY_PHASE2) {
+        fragColor = vec4(wavefuncBrightness2*wavefuncColour2
+                            + potentialBrightness/50.0, 1.0);
+    } else if (viewMode == DENSITY1) {
+    fragColor = vec4(wavefuncBrightness1*vec3(1.0, 1.0, 1.0)
+                        + potentialBrightness/50.0, 1.0);
+    
+    } else if (viewMode == DENSITY2) {
+        fragColor = vec4(wavefuncBrightness2*vec3(1.0, 1.0, 1.0)
+                            + potentialBrightness/50.0, 1.0);
+        
+    } else if (viewMode == DENSITY_PHASE_ALL) {
+        fragColor = vec4(wavefuncBrightness1*wavefuncColour1
+                            + wavefuncBrightness2*wavefuncColour2
+                            + potentialBrightness/50.0, 1.0);
+        
+    } else if (viewMode == DENSITY_ALL_DIFF_COLOURS) {
+        fragColor = vec4(vec3(wavefuncBrightness1, 0.0,
+                                    wavefuncBrightness2)
+                            + potentialBrightness/50.0, 1.0);
+        
+    } else if (viewMode == SPIN) {
+        complex2 reWavefunc1 = complex2(wavefunc1[0], 0.0,
+                                        wavefunc1[2], 0.0);
+        complex2 imWavefunc02 = complex2(0.0, wavefunc2[1] + wavefunc0[1],
+                                            0.0, wavefunc2[3] + wavefunc0[3]);
+        complex2 psi = reWavefunc1 + imWavefunc02/2.0;
+        float absPsi = sqrt(psi[0]*psi[0] + psi[1]*psi[1]
+                            + psi[2]*psi[2] + psi[3]*psi[3]);
+        float nx = complex2Dot(conj(psi), sigmaX(psi))[0];
+        float ny = complex2Dot(conj(psi), sigmaY(psi))[0];
+        float nz = complex2Dot(conj(psi), sigmaZ(psi))[0];
+        fragColor = vec4(absPsi*(sqrt(nx*nx + ny*ny)*
+                            complexToColour(nx, ny) + abs(nz))
+                            + potentialBrightness/50.0, 1.0);
+        
+    } else if (viewMode == CURRENT) {
+        vec4 current = texture2D(texCurrent, UV);
+        float currentSquared = current.x*current.x + current.y*current.y; 
+        float currentNorm = sqrt(currentSquared);
+        fragColor = 1.0*vec4(currentNorm, currentNorm, currentNorm, 1.0);
+        
+    } else if (viewMode == DEL_DOT_CURRENT) {
+        float delDotCurrent
+            = 100.0*texture2D(texDelDotCurrent, UV)[0];
+        fragColor = vec4(delDotCurrent,
+                            -delDotCurrent, -delDotCurrent, 1.0);
+        
+    } else if (viewMode == COLOUR_DENSITY) {
+        vec4 colour = texture2D(texColourDensity, UV);
+        fragColor = vec4(colour.rgb, 1.0);
+            
+    } else {
+        fragColor = vec4((wavefuncBrightness1 + wavefuncBrightness2)
+                            *vec3(1.0, 1.0, 1.0)
+                            + potentialBrightness/50.0, 1.0);
+            
     }
 }

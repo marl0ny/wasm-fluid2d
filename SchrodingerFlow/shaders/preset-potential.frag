@@ -40,29 +40,23 @@ void main() {
     float y = v*height;
     float ax, ay, phi;
     vec4 potential;
-    switch(which) {
-        case LINEAR:
-            potential = vec4(0.0, 0.0, 0.0, xAmplitude*u + yAmplitude*v);
-            break;
-        case QUADRATIC:
-            potential = vec4(0.0, 0.0, 0.0, xAmplitude*u*u + yAmplitude*v*v);
-            break;
-        case SYMMETRIC:
-            ax = q*c*xAmplitude*v, ay = -q*c*yAmplitude*u;
-            potential = vec4(ax, ay, 0.0, getSquaredTerm(ax, ay, 0.0));
-            break;
-        case AX_IS_Y2:
-            // ax = q*c*xAmplitude*y^2/height^2
-            ax = q*c*xAmplitude*v*v;
-            potential = vec4(ax, 0.0, 0.0, 0.0);
-            break;
-        case AX_IS_Y2_AY_IS_NEG_X2:
-            ax = q*c*xAmplitude*v*v;
-            ay = -q*c*yAmplitude*u*u;
-            potential = vec4(ax, ay, 0.0, getSquaredTerm(ax, ay, 0.0));
-            break;
-        default:
-            potential = vec4(0.0, 0.0, 0.0, 0.0);
+    if (which == LINEAR) {
+        potential = vec4(0.0, 0.0, 0.0, xAmplitude*u + yAmplitude*v);
+    } else if (which == QUADRATIC) {
+        potential = vec4(0.0, 0.0, 0.0, xAmplitude*u*u + yAmplitude*v*v);
+    } else if (which == SYMMETRIC) {
+        ax = q*c*xAmplitude*v, ay = -q*c*yAmplitude*u;
+        potential = vec4(ax, ay, 0.0, getSquaredTerm(ax, ay, 0.0));
+    } else if (which == AX_IS_Y2) {
+        // ax = q*c*xAmplitude*y^2/height^2
+        ax = q*c*xAmplitude*v*v;
+        potential = vec4(ax, 0.0, 0.0, 0.0);
+    } else if (which == AX_IS_Y2_AY_IS_NEG_X2) {
+        ax = q*c*xAmplitude*v*v;
+        ay = -q*c*yAmplitude*u*u;
+        potential = vec4(ax, ay, 0.0, getSquaredTerm(ax, ay, 0.0));
+    } else {
+        potential = vec4(0.0, 0.0, 0.0, 0.0);
     }
     fragColor = potential;
 }

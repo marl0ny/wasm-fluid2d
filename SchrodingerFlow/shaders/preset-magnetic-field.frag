@@ -31,27 +31,22 @@ void main() {
     float y = height*(UV[1] - 0.5);
     float dAxDy, dAyDx;
     vec3 magneticField;
-    switch(which) {
-        case SYMMETRIC:
-            // Ax = q*c*xAmplitude*v = q*c*xAmplitude*y/height
-            // Ay = q*c*xAmplitude*u = q*c*yAmplitude*x/width
-            dAxDy = q*c*xAmplitude/height;
-            dAyDx = -q*c*yAmplitude/width;
-            magneticField = vec3(0.0, 0.0, dAyDx - dAxDy);
-            break;
-        case AX_IS_Y2:
-            dAyDx = 0.0;
-            dAxDy = 2.0*q*c*xAmplitude*y/(height*height);
-            magneticField = vec3(0.0, 0.0, dAyDx - dAxDy);
-            break;
-        case AX_IS_Y2_AY_IS_NEG_X2:
-            dAxDy = 2.0*q*c*xAmplitude*y/(height*height);
-            dAyDx = -2.0*q*c*yAmplitude*x/(width*width);
-            magneticField = vec3(0.0, 0.0, dAyDx - dAxDy);
-            break;
-        default:
-            magneticField = vec3(0.0, 0.0, 0.0);
-            break;
+    if (which == SYMMETRIC) {
+        // Ax = q*c*xAmplitude*v = q*c*xAmplitude*y/height
+        // Ay = q*c*xAmplitude*u = q*c*yAmplitude*x/width
+        dAxDy = q*c*xAmplitude/height;
+        dAyDx = -q*c*yAmplitude/width;
+        magneticField = vec3(0.0, 0.0, dAyDx - dAxDy);
+    } else if (which == AX_IS_Y2) {
+        dAyDx = 0.0;
+        dAxDy = 2.0*q*c*xAmplitude*y/(height*height);
+        magneticField = vec3(0.0, 0.0, dAyDx - dAxDy);
+    } else if (which == AX_IS_Y2_AY_IS_NEG_X2) {
+        dAxDy = 2.0*q*c*xAmplitude*y/(height*height);
+        dAyDx = -2.0*q*c*yAmplitude*x/(width*width);
+        magneticField = vec3(0.0, 0.0, dAyDx - dAxDy);
+    } else {
+        magneticField = vec3(0.0, 0.0, 0.0);
     }
     fragColor = vec4(magneticField, 1.0);
 }

@@ -1,14 +1,14 @@
-#version 330 core
+#VERSION_NUMBER_PLACEHOLDER
 
 precision highp float;
 
 #if __VERSION__ >= 300
-in vec2 uv;
+in vec2 UV;
 out vec4 fragColor;
 #define texture2D texture
 #else
 #define fragColor gl_FragColor
-varying highp vec2 uv;
+varying highp vec2 UV;
 #endif
 
 void main() {

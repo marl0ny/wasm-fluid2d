@@ -35,6 +35,17 @@ struct TextureParams {
     int min_filter, mag_filter; // GL_LINEAR, GL_NEAREST, etc
 };
 
+
+struct VertexParam {
+    char *name; // The name of the attribute.
+    GLint size; // Number of components for this attribute
+    GLenum type; // Type of the data
+    GLboolean normalized; // Whether the data is normalized or not
+    GLsizei stride; // Stride
+    GLuint64 offset; // Offset, in number of bytes
+};
+
+
 struct Vec2 {
     union {
         struct { float x, y; };
@@ -56,6 +67,7 @@ struct DVec2 {
 struct IVec2 {
     union {
         struct { int32_t x, y; };
+        struct { int32_t i, j; };
         struct { int32_t u, v; };
         struct { int32_t s, t; };
         struct { int32_t ind[2]; };
@@ -80,6 +92,16 @@ struct Vec3 {
     };
 };
 
+struct IVec3 {
+    union {
+        struct { int32_t x, y, z; };
+        struct { int32_t i, j, k; };
+        struct { int32_t r, g, b; };
+        struct { int32_t s, t, p; };
+        struct { int32_t ind[3]; };
+    };
+};
+
 struct DVec3 {
     union {
         struct { double x, y, z; };
@@ -98,6 +120,13 @@ struct Vec4 {
     };
 };
 
+struct Matrix4x4 {
+    union {
+        struct {float as_array[16]; };
+        struct {float ind[4][4]; };
+    };
+};
+
 struct DVec4 {
     union {
         struct { double x, y, z, w; };
@@ -110,6 +139,7 @@ struct DVec4 {
 struct IVec4 {
     union {
         struct { int32_t x, y, z, w; };
+        struct { int32_t i, j, k, l; };
         struct { int32_t r, g, b, a; };
         struct { int32_t s, t, p, q; };
         struct { int32_t ind[4]; };
@@ -128,11 +158,22 @@ struct UVec4 {
 
 GLFWwindow *init_window(int width, int height);
 
-GLuint make_program(const char *paht_to_fragment_shader_file);
+GLuint make_program(const char *path_vertex, const char *path_fragment);
 
-GLuint make_program_from_string_source(const char *src);
+GLuint make_quad_program(const char *path_to_fragment_shader_file);
+
+GLuint make_quad_program_from_string_source(const char *src);
+
+int new_frame(const struct TextureParams *texture_params,
+              float *vertices, int sizeof_vertices,
+              int *elements, int sizeof_elements);
 
 frame_id new_quad(const struct TextureParams *texture_params);
+
+void bind_frame(int frame2d_id, GLuint program);
+
+void set_vertex_attributes(const struct VertexParam *vertex_params,
+                           int n);
 
 void bind_quad(frame_id quad_id, GLuint program);
 
@@ -149,20 +190,26 @@ void set_vec3_uniform(const char *name, float v0, float v1, float v2);
 void set_vec4_uniform(const char *name,
                       float v0, float v1, float v2, float v3);
 
+void set_ivec2_uniform(const char *name, int v0, int v1);
+
+void set_ivec3_uniform(const char *name, int v0, int v1, int v2);
+
+void set_matrix4_uniform(const char *name, float *matrix);
+
 void print_user_defined_uniforms();
 
 void unbind();
 
-void draw();
+void draw_quad();
 
-void draw_unbind();
+void draw_unbind_quad();
 
-void get_texture_array(int quad_id,
-                       int x0, int y0, int width, int height,
-                       int texture_type, void *array);
+void get_quad_texture_array(int quad_id,
+                            int x0, int y0, int width, int height,
+                            int texture_type, void *array);
 
-void substitute_array(int quad_id, int width, int height,
-                      int texture_type, void *array);
+void quad_substitute_array(int quad_id, int width, int height,
+                           int texture_type, void *array);
 
 
 #endif
